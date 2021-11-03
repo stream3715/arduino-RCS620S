@@ -446,101 +446,6 @@ int RCS620S::rwCommand(
     return 1;
 }
 
-{
-    int ret;
-    uint8_t buf[9];
-
-    flushSerial();
-
-    uint8_t dcs = calcDCS(command, commandLen);
-
-    /* transmit the command */
-    buf[0] = 0x00;
-    buf[1] = 0x00;
-    buf[2] = 0xff;
-    if (commandLen <= 255)
-    {
-        /* normal frame */
-        buf[3] = commandLen;
-        buf[4] = (uint8_t)-buf[3];
-        writeSerial(buf, 5);
-    }
-    else
-    {
-        /* extended frame */
-        buf[3] = 0xff;
-        buf[4] = 0xff;
-        buf[5] = (uint8_t)((commandLen >> 8) & 0xff);
-        buf[6] = (uint8_t)((commandLen >> 0) & 0xff);
-        buf[7] = (uint8_t) - (buf[5] + buf[6]);
-        writeSerial(buf, 8);
-    }
-    writeSerial(command, commandLen);
-    buf[0] = dcs;
-    buf[1] = 0x00;
-    writeSerial(buf, 2);
-
-    /* receive an ACK */
-    ret = readSerial(buf, 6);
-    if (!ret || (memcmp(buf, "\x00\x00\xff\x00\xff\x00", 6) != 0))
-    {
-        cancel();
-        return 0;
-    }
-
-    /* receive a response */
-    ret = readSerial(buf, 5);
-    if (!ret)
-    {
-        cancel();
-        return 0;
-    }
-    else if (memcmp(buf, "\x00\x00\xff", 3) != 0)
-    {
-        return 0;
-    }
-    if ((buf[3] == 0xff) && (buf[4] == 0xff))
-    {
-        ret = readSerial(buf + 5, 3);
-        if (!ret || (((buf[5] + buf[6] + buf[7]) & 0xff) != 0))
-        {
-            return 0;
-        }
-        *responseLen = (((uint16_t)buf[5] << 8) |
-                        ((uint16_t)buf[6] << 0));
-    }
-    else
-    {
-        if (((buf[3] + buf[4]) & 0xff) != 0)
-        {
-            return 0;
-        }
-        *responseLen = buf[3];
-    }
-    if (*responseLen > RCS620S_MAX_RW_RESPONSE_LEN)
-    {
-        return 0;
-    }
-
-    ret = readSerial(response, *responseLen);
-    if (!ret)
-    {
-        cancel();
-        return 0;
-    }
-
-    dcs = calcDCS(response, *responseLen);
-
-    ret = readSerial(buf, 2);
-    if (!ret || (buf[0] != dcs) || (buf[1] != 0x00))
-    {
-        cancel();
-        return 0;
-    }
-
-    return 1;
-}
-
 void RCS620S::cancel(void)
 {
     /* transmit an ACK */
@@ -579,7 +484,7 @@ int RCS620S::readSerial(
 
     while (nread < len)
     {
-        if (wait && checkTimeout(t0))
+        if (checkTimeout(t0))
         {
             return 0;
         }
