@@ -4,9 +4,14 @@
  * Copyright 2010 Sony Corporation
  */
 
+#include <stdio.h>
+#include <string.h>
+#include <inttypes.h>
 #include "Arduino.h"
+#include "Print.h"
+#include "HardwareSerial.h"
 
-#include "RCS620S-kai.h"
+#include "RCS620S.h"
 
 /* --------------------------------
  * Constant
@@ -36,8 +41,6 @@
 
 RCS620S::RCS620S(Stream &serial)
 {
-    pinMode(22, OUTPUT);
-    digitalWrite(22, LOW);
     _serial = &serial;
     this->timeout = RCS620S_DEFAULT_TIMEOUT;
 }
@@ -383,7 +386,7 @@ int RCS620S::rwCommand(
     writeSerial(buf, 2);
 
     /* receive an ACK */
-    ret = readSerial(buf, 6, true);
+    ret = readSerial(buf, 6);
     if (!ret || (memcmp(buf, "\x00\x00\xff\x00\xff\x00", 6) != 0))
     {
         cancel();
@@ -391,7 +394,7 @@ int RCS620S::rwCommand(
     }
 
     /* receive a response */
-    ret = readSerial(buf, 5, true);
+    ret = readSerial(buf, 5);
     if (!ret)
     {
         cancel();
@@ -403,7 +406,7 @@ int RCS620S::rwCommand(
     }
     if ((buf[3] == 0xff) && (buf[4] == 0xff))
     {
-        ret = readSerial(buf + 5, 3, true);
+        ret = readSerial(buf + 5, 3);
         if (!ret || (((buf[5] + buf[6] + buf[7]) & 0xff) != 0))
         {
             return 0;
@@ -424,7 +427,7 @@ int RCS620S::rwCommand(
         return 0;
     }
 
-    ret = readSerial(response, *responseLen, true);
+    ret = readSerial(response, *responseLen);
     if (!ret)
     {
         cancel();
@@ -433,7 +436,7 @@ int RCS620S::rwCommand(
 
     dcs = calcDCS(response, *responseLen);
 
-    ret = readSerial(buf, 2, true);
+    ret = readSerial(buf, 2);
     if (!ret || (buf[0] != dcs) || (buf[1] != 0x00))
     {
         cancel();
@@ -443,11 +446,6 @@ int RCS620S::rwCommand(
     return 1;
 }
 
-int RCS620S::rwAsTarget(
-    const uint8_t *command,
-    uint16_t commandLen,
-    uint8_t response[RCS620S_MAX_RW_RESPONSE_LEN],
-    uint16_t *responseLen)
 {
     int ret;
     uint8_t buf[9];
@@ -483,7 +481,7 @@ int RCS620S::rwAsTarget(
     writeSerial(buf, 2);
 
     /* receive an ACK */
-    ret = readSerial(buf, 6, true);
+    ret = readSerial(buf, 6);
     if (!ret || (memcmp(buf, "\x00\x00\xff\x00\xff\x00", 6) != 0))
     {
         cancel();
@@ -491,7 +489,7 @@ int RCS620S::rwAsTarget(
     }
 
     /* receive a response */
-    ret = readSerial(buf, 5, false);
+    ret = readSerial(buf, 5);
     if (!ret)
     {
         cancel();
@@ -503,7 +501,7 @@ int RCS620S::rwAsTarget(
     }
     if ((buf[3] == 0xff) && (buf[4] == 0xff))
     {
-        ret = readSerial(buf + 5, 3, true);
+        ret = readSerial(buf + 5, 3);
         if (!ret || (((buf[5] + buf[6] + buf[7]) & 0xff) != 0))
         {
             return 0;
@@ -524,7 +522,7 @@ int RCS620S::rwAsTarget(
         return 0;
     }
 
-    ret = readSerial(response, *responseLen, true);
+    ret = readSerial(response, *responseLen);
     if (!ret)
     {
         cancel();
@@ -533,7 +531,7 @@ int RCS620S::rwAsTarget(
 
     dcs = calcDCS(response, *responseLen);
 
-    ret = readSerial(buf, 2, true);
+    ret = readSerial(buf, 2);
     if (!ret || (buf[0] != dcs) || (buf[1] != 0x00))
     {
         cancel();
@@ -574,8 +572,7 @@ void RCS620S::writeSerial(
 
 int RCS620S::readSerial(
     uint8_t *data,
-    uint16_t len,
-    bool wait)
+    uint16_t len)
 {
     uint16_t nread = 0;
     unsigned long t0 = millis();

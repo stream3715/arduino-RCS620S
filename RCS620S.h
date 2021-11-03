@@ -52,10 +52,6 @@ private:
         uint16_t commandLen,
         uint8_t response[RCS620S_MAX_RW_RESPONSE_LEN],
         uint16_t *responseLen);
-    int rwAsTarget(const uint8_t *command,
-                   uint16_t commandLen,
-                   uint8_t response[RCS620S_MAX_RW_RESPONSE_LEN],
-                   uint16_t *responseLen);
     void cancel(void);
     uint8_t calcDCS(
         const uint8_t *data,
@@ -66,8 +62,7 @@ private:
         uint16_t len);
     int readSerial(
         uint8_t *data,
-        uint16_t len,
-        bool wait);
+        uint16_t len);
     void flushSerial(void);
 
     int checkTimeout(unsigned long t0);
