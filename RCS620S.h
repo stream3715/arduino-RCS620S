@@ -23,7 +23,11 @@
 class RCS620S
 {
 public:
+#if defined __AVR__
+    RCS620S(Stream &serial = Serial);
+#elif defined ESP32
     RCS620S(Stream &serial = Serial1);
+#endif
 
     void wakeUp(void);
     int getFirmwareVersion(uint8_t response[RCS620S_MAX_CARD_RESPONSE_LEN], uint16_t *responseLen);
